@@ -21,6 +21,7 @@
     "next": "^13.4.19",
     "socket.io": "^4.7.2",
     "socket.io-client": "^4.7.2",
+    "stripe": "^16.0.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
