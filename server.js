@@ -17,7 +17,12 @@ const { handleUncaughtErrors, handleUnhandledRejections } = require("./src/serve
 const { createIncident } = require("./src/server/incidents/incidentService");
 const { uuidv4 } = require("./src/shared/ids");
 
-// Determine environment
+// Preload critical models early (prevents "model not found" warnings)
+try { require("./models/BillingStatus"); } catch {}
+try { require("./models/User"); } catch {}
+try { require("./models/AuditLog"); } catch {}
+try { require("./models/Incident"); } catch {}
+
 const port = Number(process.env.PORT) || 3006;
 const dev = process.env.NODE_ENV !== "production";
 
@@ -41,11 +46,8 @@ async function bootstrap() {
   await nextApp.prepare();
 
   const app = express();
-
-  // Trust the first proxy (Render/Heroku style)
   app.set("trust proxy", 1);
 
-  // Security and parsing middlewares
   app.use(helmet());
   app.use(cookieParser());
   app.use(compression());
@@ -60,12 +62,15 @@ async function bootstrap() {
   } catch (err) {
     warn("API router not found, mounting stub that returns 503");
     apiRouter = express.Router().all("*", (req, res) => {
-      res.status(503).json({ ok: false, error: { code: "SERVICE_UNAVAILABLE", message: "Service Unavailable" } });
+      res.status(503).json({
+        ok: false,
+        error: { code: "SERVICE_UNAVAILABLE", message: "Service Unavailable" },
+      });
     });
   }
   app.use("/api", apiRouter);
 
-  // Create HTTP server to attach Socket.IO and Next handler on
+  // Create HTTP server
   const server = http.createServer(app);
 
   // Attach Socket.IO if module exists
@@ -81,18 +86,13 @@ async function bootstrap() {
     warn("Socket.IO module not found, skipping socket setup");
   }
 
-  // Start Discord bot (NOTE: bot is at ./bot, not ./src/bot)
+  // Start Discord bot (bot is at ./bot)
   try {
     const { startBot } = require("./bot/index");
-
     if (typeof startBot !== "function") {
       warn("Bot module loaded but startBot() not exported");
     } else {
-      const services = {
-        createIncident,
-        // Add more injected services as your modules mature (banService, billing, etc.)
-      };
-
+      const services = { createIncident };
       const client = await startBot({ services });
       if (client) log("Discord bot online");
       else warn("Discord bot not started (missing token/config)");
@@ -101,27 +101,23 @@ async function bootstrap() {
     warn(`Bot module not found or failed to start: ${err.message}`);
   }
 
-  // Next.js page handler. Wrap in catch to forward errors to middleware.
+  // Next handler
   app.all("*", (req, res) => {
     Promise.resolve(handle(req, res)).catch((err) => {
       errorMiddleware(err, req, res, () => {});
     });
   });
 
-  // Error handling middleware should be last
   app.use(errorMiddleware);
 
-  // Start listening
   server.listen(port, () => {
     log(`Server ready on port ${port}`);
   });
 
-  // Graceful shutdown on SIGTERM/SIGINT
+  // Graceful shutdown
   const gracefulShutdown = () => {
     log("Received termination signal, shutting down gracefully");
-    server.close(() => {
-      log("HTTP server closed");
-    });
+    server.close(() => log("HTTP server closed"));
 
     try {
       const mongoose = require("mongoose");
@@ -138,7 +134,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch(async (err) => {
-  // Create an incident on startup failure
   const refId = uuidv4();
   logError("Startup error:", err);
 
