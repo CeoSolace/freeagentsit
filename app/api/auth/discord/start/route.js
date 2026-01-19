@@ -1,17 +1,21 @@
-const { getOAuthUrl } = require('../../../../src/server/auth/discordOAuth');
-const { NextResponse } = require('next/server');
+const { NextResponse } = require("next/server");
+
+// Use alias instead of fragile relative path
+const { getOAuthUrl } = require("@/src/server/auth/discordOAuth");
 
 /*
- * API route: initiate Discord OAuth.  Constructs the authorization
- * URL and redirects the client to Discord.  The state parameter is
- * generated internally by the Discord OAuth helper.  For security,
- * you may wish to persist the state in a cookie or session, but the
- * mocked implementation does not verify state.
+ * API route: initiate Discord OAuth.
+ * Constructs the authorization URL and redirects the client to Discord.
  */
 
 async function GET() {
-  const url = getOAuthUrl();
-  return NextResponse.redirect(url);
+  try {
+    const url = getOAuthUrl();
+    return NextResponse.redirect(url);
+  } catch (err) {
+    const message = err?.message || "Failed to start Discord OAuth";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 module.exports = { GET };
