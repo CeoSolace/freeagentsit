@@ -1,81 +1,53 @@
-const crypto = require('crypto');
+const bcrypt = require("bcryptjs");
+const User = require("../../../models/User");
 
-/*
- * Password authentication helpers.
- *
- * Users sign up via Discord, but may optionally set a password in order
- * to allow login via email and password later.  This module provides
- * utilities to hash a password, verify a password against a stored
- * hash and set or disable the password on a user record.
- */
+async function setPasswordForUser(userId, plainPassword) {
+  if (!plainPassword || typeof plainPassword !== "string" || plainPassword.length < 8) {
+    const err = new Error("Password must be at least 8 characters.");
+    err.status = 400;
+    throw err;
+  }
 
-const HASH_ALGORITHM = 'sha256';
-const SALT_BYTES = 16;
+  const passwordHash = await bcrypt.hash(plainPassword, 12);
 
-/**
- * Produce a salted hash for the given plaintext password.  A random
- * salt is generated internally.  The returned string is
- * formatted as `<salt>$<hash>` to allow easy verification later.
- *
- * @param {string} password Plaintext password
- * @returns {string} The salted hash
- */
-function hashPassword(password) {
-  const salt = crypto.randomBytes(SALT_BYTES).toString('hex');
-  const hash = crypto
-    .createHash(HASH_ALGORITHM)
-    .update(salt + password)
-    .digest('hex');
-  return `${salt}$${hash}`;
-}
+  const user = await User.findById(userId);
+  if (!user) {
+    const err = new Error("User not found.");
+    err.status = 404;
+    throw err;
+  }
 
-/**
- * Verify whether a given plaintext password matches a stored salted
- * hash.  Returns true if the password matches, false otherwise.
- *
- * @param {string} password Plaintext password
- * @param {string} hashed Stored salt and hash separated by '$'
- * @returns {boolean}
- */
-function verifyPassword(password, hashed) {
-  if (!hashed || typeof hashed !== 'string') return false;
-  const [salt, digest] = hashed.split('$');
-  if (!salt || !digest) return false;
-  const hash = crypto
-    .createHash(HASH_ALGORITHM)
-    .update(salt + password)
-    .digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(digest));
-}
-
-/**
- * Set a password on a user record.  This function updates the
- * `passwordHash` and `passwordEnabled` fields on the user.  It does
- * not save the user to the database; callers should persist
- * afterwards.
- *
- * @param {Object} user User record
- * @param {string} password Plaintext password
- */
-function setPassword(user, password) {
-  user.passwordHash = hashPassword(password);
+  user.passwordHash = passwordHash;
   user.passwordEnabled = true;
+
+  await user.save();
+  return user;
 }
 
-/**
- * Disable the password on a user record.  This clears the stored
- * password hash and marks the account as password disabled.
- *
- * @param {Object} user User record
- */
-function disablePassword(user) {
-  user.passwordHash = null;
-  user.passwordEnabled = false;
+async function verifyPasswordLogin(email, plainPassword) {
+  const e = String(email || "").toLowerCase().trim();
+  if (!e || !plainPassword) {
+    const err = new Error("Missing email or password.");
+    err.status = 400;
+    throw err;
+  }
+
+  // Prefer native mongoose query
+  const user = await User.findOne({ email: e });
+  if (!user || !user.passwordEnabled || !user.passwordHash) {
+    const err = new Error("Invalid credentials.");
+    err.status = 401;
+    throw err;
+  }
+
+  const ok = await bcrypt.compare(plainPassword, user.passwordHash);
+  if (!ok) {
+    const err = new Error("Invalid credentials.");
+    err.status = 401;
+    throw err;
+  }
+
+  return user;
 }
 
-module.exports = {
-  hashPassword,
-  verifyPassword,
-  setPassword,
-  disablePassword,
-};
+module.exports = { setPasswordForUser, verifyPasswordLogin };
