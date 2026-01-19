@@ -1,0 +1,27 @@
+{
+  "name": "freeagent-a-core",
+  "version": "1.0.0",
+  "description": "Core bootstrap for FreeAgents server",
+  "main": "server.js",
+  "scripts": {
+    "dev": "NODE_ENV=development node server.js",
+    "start": "NODE_ENV=production node server.js",
+    "build": "next build"
+  },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.7.0",
+    "helmet": "^7.0.0",
+    "mongoose": "^7.5.0",
+    "next": "^13.4.19",
+    "socket.io": "^4.7.2",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.8",
+    "typescript": "5.9.3"
+  }
+}
