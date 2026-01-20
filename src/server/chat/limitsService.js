@@ -2,11 +2,14 @@
  * limitsService
  *
  * Enforces per-user chat creation limits based on billing plan.
+ * FREE users are limited per rolling 7-day window.
+ * PRO / ULT users are unlimited.
  */
 
 let AppError;
 let logger;
 
+// ---- AppError (graceful fallback) ----
 try {
   AppError = require('../common/errors').AppError;
 } catch {
@@ -18,6 +21,7 @@ try {
   };
 }
 
+// ---- Logger (graceful fallback) ----
 try {
   logger = require('../common/logger');
 } catch {
@@ -28,31 +32,42 @@ try {
   };
 }
 
+// ---- Models ----
 const Conversation = require('../../../models/Conversation');
 
 let BillingStatus = null;
 try {
   BillingStatus = require('../../billing/models/BillingStatus');
 } catch {
-  logger.warn('BillingStatus model missing, defaulting to FREE plan');
+  logger.warn('BillingStatus model missing, defaulting all users to FREE plan');
 }
 
+// ---- Limits ----
 const MAX_FREE_NEW_CHATS_PER_WEEK = 5;
 
+/**
+ * Enforce weekly chat creation limits for a user.
+ *
+ * @param {string|ObjectId} userId
+ * @throws {AppError} 429 if limit exceeded
+ */
 async function enforceNewChatLimit(userId) {
   let plan = 'FREE';
 
+  // ---- Resolve billing plan ----
   if (BillingStatus) {
-    const status = await BillingStatus.findOne({ user: userId }).lean();
+    const status = await BillingStatus.findOne({ userId }).lean();
     if (status?.plan) {
       plan = status.plan.toUpperCase();
     }
   }
 
+  // ---- Paid plans are unlimited ----
   if (plan === 'PRO' || plan === 'ULT') {
     return;
   }
 
+  // ---- Free plan enforcement ----
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const recentCount = await Conversation.countDocuments({
@@ -61,8 +76,11 @@ async function enforceNewChatLimit(userId) {
   });
 
   if (recentCount >= MAX_FREE_NEW_CHATS_PER_WEEK) {
+    logger.info(`User ${userId} hit FREE weekly chat limit`);
     throw new AppError(429, 'Weekly chat limit reached on Free plan');
   }
 }
 
-module.exports = { enforceNewChatLimit };
+module.exports = {
+  enforceNewChatLimit,
+};
