@@ -9,7 +9,7 @@
 let AppError;
 let logger;
 
-// ---- AppError (graceful fallback) ----
+// ---- Safe AppError import ----
 try {
   AppError = require('../common/errors').AppError;
 } catch {
@@ -21,7 +21,7 @@ try {
   };
 }
 
-// ---- Logger (graceful fallback) ----
+// ---- Safe logger import ----
 try {
   logger = require('../common/logger');
 } catch {
@@ -35,26 +35,24 @@ try {
 // ---- Models ----
 const Conversation = require('../../../models/Conversation');
 
+// ✅ CORRECT PATH
 let BillingStatus = null;
 try {
-  BillingStatus = require('../../billing/models/BillingStatus');
-} catch {
-  logger.warn('BillingStatus model missing, defaulting all users to FREE plan');
+  BillingStatus = require('../billing/models/BillingStatus');
+} catch (err) {
+  logger.warn('BillingStatus model not found, assuming FREE plan');
 }
 
-// ---- Limits ----
 const MAX_FREE_NEW_CHATS_PER_WEEK = 5;
 
 /**
- * Enforce weekly chat creation limits for a user.
- *
+ * Enforce weekly chat creation limits
  * @param {string|ObjectId} userId
- * @throws {AppError} 429 if limit exceeded
  */
 async function enforceNewChatLimit(userId) {
   let plan = 'FREE';
 
-  // ---- Resolve billing plan ----
+  // Resolve billing plan if model exists
   if (BillingStatus) {
     const status = await BillingStatus.findOne({ userId }).lean();
     if (status?.plan) {
@@ -62,12 +60,12 @@ async function enforceNewChatLimit(userId) {
     }
   }
 
-  // ---- Paid plans are unlimited ----
+  // Paid plans are unlimited
   if (plan === 'PRO' || plan === 'ULT') {
     return;
   }
 
-  // ---- Free plan enforcement ----
+  // Count chats created in the last 7 days
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const recentCount = await Conversation.countDocuments({
@@ -76,7 +74,7 @@ async function enforceNewChatLimit(userId) {
   });
 
   if (recentCount >= MAX_FREE_NEW_CHATS_PER_WEEK) {
-    logger.info(`User ${userId} hit FREE weekly chat limit`);
+    logger.info(`User ${userId} hit free weekly chat limit`);
     throw new AppError(429, 'Weekly chat limit reached on Free plan');
   }
 }
