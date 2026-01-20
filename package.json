@@ -1,9 +1,8 @@
 {
   "name": "freeagent-a-core",
   "version": "1.0.0",
-  "description": "Core bootstrap for FreeAgents server",
-  "main": "server.js",
   "private": true,
+  "main": "server.js",
   "scripts": {
     "dev": "NODE_ENV=development node server.js",
     "build": "NODE_ENV=production next build",
@@ -11,6 +10,7 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "bufferutil": "^4.0.8",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
     "discord.js": "^14.16.0",
@@ -23,6 +23,8 @@
     "socket.io": "^4.7.2",
     "socket.io-client": "^4.7.2",
     "stripe": "^16.0.0",
+    "supports-color": "^9.4.0",
+    "utf-8-validate": "^6.0.3",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
