@@ -1,8 +1,8 @@
 // app/dashboard/page.js
 
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Adjust path based on your auth setup
-import { prisma } from '@/lib/prisma'; // Adjust path to your Prisma client
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Now using alias (works with your tsconfig)
+import { prisma } from '@/lib/prisma'; // Now using alias (works with your tsconfig)
 
 export default async function Dashboard() {
   const session = await getServerSession(authOptions);
@@ -18,24 +18,30 @@ export default async function Dashboard() {
   }
 
   // Fetch user data from Prisma (assuming User model links to email or id from session)
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email }, // Or use id if available in session
-    include: {
-      listings: true, // Assuming User has relation to Listing
-      teams: true,    // Assuming User owns Teams
-      // Add more relations as per your schema, e.g., players
-    },
-  });
+  let user;
+  try {
+    user = await prisma.user.findUnique({
+      where: { email: session.user.email }, // Or use id if available in session
+      include: {
+        listings: true, // Assuming User has relation to Listing
+        teams: true,    // Assuming User owns Teams
+        // Add more relations as per your schema, e.g., players
+      },
+    });
+  } catch (error) {
+    console.error('Prisma query error:', error);
+    user = { listings: [], teams: [] }; // Fallback
+  }
 
   // Fetch subscription/billing status (integrate with Stripe if BillingStatus.js handles it)
   // For example, assuming user has a stripeCustomerId field
   let billingStatus = 'Not Subscribed';
-  if (user.stripeCustomerId) {
+  if (user && user.stripeCustomerId) {
     // Pseudo-code: Call Stripe API or your BillingStatus utility
     // const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
     // const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
     // billingStatus = subscription.status;
-    billingStatus = 'Active'; // Placeholder; replace with real fetch
+    billingStatus = 'Active'; // Placeholder; replace with real fetch from BillingStatus.js
   }
 
   return (
@@ -100,7 +106,7 @@ export default async function Dashboard() {
           <li><a href="/teams/new" className="text-blue-500">Create New Team</a></li>
           <li><a href="/listings/new" className="text-blue-500">Add New Listing</a></li>
           {/* Add Discord community link if integrated */}
-          <li><a href="https://discord.gg/ySFhZeCdby" className="text-blue-500">Join Community</a></li>
+          <li><a href="https://discord.gg/Z2RWHCU7KM" className="text-blue-500">Join Community</a></li>
         </ul>
       </section>
     </div>
