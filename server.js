@@ -1,4 +1,4 @@
-// server.js - Enhanced, secure, runs bot via require
+// server.js
 require('dotenv').config();
 const express = require('express');
 const next = require('next');
@@ -49,10 +49,8 @@ app.prepare().then(() => {
     next();
   });
 
-  // Stub for ads
   if (process.env.ADS_ENABLED === 'true') {
     server.use((req, res, next) => {
-      // Ads logic
       next();
     });
   }
@@ -63,7 +61,6 @@ app.prepare().then(() => {
   server.listen(port, (err) => {
     if (err) throw err;
     console.log(`> Server ready on http://localhost:${port}`);
-    // Run bot
     require('./bot.js');
   });
 });
