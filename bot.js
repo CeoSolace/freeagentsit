@@ -1,4 +1,4 @@
-// bot.js - Kept minimal, efficient, error-resilient
+// bot.js
 require('dotenv').config();
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 
