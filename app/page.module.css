@@ -27,7 +27,7 @@
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.04em;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
+  background: linear-gradient(135deg, #d97706 0%, #ea580c 50%, #dc2626 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -63,13 +63,13 @@
 }
 
 .primaryBtn {
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: linear-gradient(135deg, #d97706, #ea580c);
   color: white;
 }
 
 .primaryBtn:hover {
   transform: translateY(-6px);
-  box-shadow: 0 25px 50px rgba(79, 70, 229, 0.45);
+  box-shadow: 0 25px 50px rgba(217, 119, 6, 0.45);
 }
 
 .secondaryBtn {
